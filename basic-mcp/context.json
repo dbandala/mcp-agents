@@ -1,0 +1,16 @@
+{
+    "task_id": "001",
+    "current_goal": "Assemble part A",
+    "current_state": {
+      "robot_arm_position": [10, 5],
+      "camera_feed": "image_001.jpg"
+    },
+    "memory": {
+      "prior_actions": ["pick", "place"],
+      "success_rate": 0.92
+    },
+    "environment": {
+      "light_conditions": "dim",
+      "temperature": 25.3
+    }
+  }
