@@ -1,0 +1,8 @@
+# ignore all files with .env in the name
+*.env
+
+# ignore all files within /venv/
+venv/
+
+# ignore all files within /__pycache__/
+__pycache__/

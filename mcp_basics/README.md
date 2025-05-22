@@ -72,4 +72,15 @@ Central service that:
 d) Simulate Interactions
 Start with mocked components to simulate message passing and state evolution.
 
+7. Testing & Scaling
+* Add validation layers and access control
+* Consider versioning the context schema
+* Integrate with async message queues for real-time systems
+* Add logging and visualization tools for debugging
 
+8. Tools You Can Use
+* LangGraph – stateful graph-based orchestration for LLMs
+* Autogen – for multi-agent AI systems
+* Kafka/NATS – for context propagation in distributed systems
+* Redis – for shared in-memory context store
+* FastAPI/Flask – for hosting your MCP controller

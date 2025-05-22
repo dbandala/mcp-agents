@@ -33,6 +33,6 @@ class Executor(Model):
 context = Context()
 models = [Planner("Planner", context), Executor("Executor", context)]
 
-for _ in range(2):
-    for model in models:
-        model.act()
+for model in models:
+    model.act()
+    print("Model context: ", model.context.get(), "\n")
