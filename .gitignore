@@ -6,3 +6,20 @@ venv/
 
 # ignore all files within /__pycache__/
 __pycache__/
+
+# macos files
+.DS_Store
+*.DS_Store
+
+# ignore preloaded models
+*.pt
+
+# images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.ico
+*.webp
