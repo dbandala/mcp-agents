@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from context.mcp_bus import MCPBus
 from context.mcp_message import MCPMessage
-from agents.perception_agent import PerceptionAgent
+from agents.perception_agent_v2 import PerceptionAgent
 from agents.planning_agent import PlanningAgent
 from agents.control_agent import ControlAgent
 
@@ -29,12 +29,8 @@ def process_image():
         if not data:
             return jsonify({'error': 'No image data provided'}), 400
         
-        input_image = data
-
-        print(input_image, "\n\n")
-        
         # Create and send initial message
-        msg = MCPMessage(source="Sensor", target="Perception", content=input_image)
+        msg = MCPMessage(source="Sensor", target="Perception", content=data)
 
         # Process the message through the system
         response = bus.send(msg)

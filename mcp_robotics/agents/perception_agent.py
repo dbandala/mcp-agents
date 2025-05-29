@@ -30,9 +30,7 @@ class PerceptionAgent(Agent):
         except Exception as e:
             raise ValueError("Unsupported image data type: " + str(type(image_data))+" Error: ", e)
         
-
-        print("image_data: ", image_data, "\n\n")
-        
+        # Start perception pipeline
         # Use GPT for labeling assistance
         description = self.describe_image(image_data)
         # send description to planning agent

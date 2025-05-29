@@ -21,9 +21,10 @@ class PlanningAgent(Agent):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are a robotics planning agent."},
-                {"role": "user", "content": f"Given this environment: {perception_description}, what should I do next? Make a list of actions to take."}
+                {"role": "system", "content": "You are a robotics planning agent. You are given a description of the environment and you need to generate a list of actions to take in order to avoid obstacles."},
+                {"role": "user", "content": f"Given this perception description: {perception_description}, what should I do next? Make a list of actions to take."}
             ],
-            temperature=0
+            temperature=0,
+            max_tokens=400
         )
         return MCPMessage(source=self.name, target="Control", content=response.choices[0].message.content)
