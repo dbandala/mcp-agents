@@ -1,6 +1,7 @@
 from typing import Any
 import httpx
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 # Initialize FastMCP server
 mcp = FastMCP("weather")
@@ -9,7 +10,21 @@ mcp = FastMCP("weather")
 NWS_API_BASE = "https://api.weather.gov"
 USER_AGENT = "weather-app/1.0"
 
-@mcp.tool()
+@mcp.tool(
+    name="get_alerts",
+    description="Get weather alerts for a US state.",
+    annotations=ToolAnnotations(parameters={
+        "type": "object",
+        "properties": {
+            "state": {
+                "type": "string",
+                "description": "Two-letter US state code (e.g. CA, NY)"
+            }
+        },
+        "required": ["state"],
+        "additionalProperties": False
+    })
+)
 async def get_alerts(state: str) -> str:
     """Get weather alerts for a US state.
 
@@ -28,7 +43,19 @@ async def get_alerts(state: str) -> str:
     alerts = [format_alert(feature) for feature in data["features"]]
     return "\n---\n".join(alerts)
 
-@mcp.tool()
+@mcp.tool(
+    name="get_forecast",
+    description="Get weather forecast for a location.",
+    annotations=ToolAnnotations(parameters={
+        "type": "object",
+        "properties": {
+            "latitude": {"type": "number", "description": "Latitude of the location"},
+            "longitude": {"type": "number", "description": "Longitude of the location"}
+        },
+        "required": ["latitude", "longitude"],
+        "additionalProperties": False
+    })
+)
 async def get_forecast(latitude: float, longitude: float) -> str:
     """Get weather forecast for a location.
 
