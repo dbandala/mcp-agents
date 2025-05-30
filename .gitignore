@@ -3,6 +3,8 @@
 
 # ignore all files within /venv/
 venv/
+.venv/
+.vscode/
 
 # ignore all files within /__pycache__/
 __pycache__/
