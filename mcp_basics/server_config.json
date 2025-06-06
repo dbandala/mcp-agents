@@ -8,14 +8,21 @@
                 "."
             ]
         },
-        
+        "weather": {
+            "command": "uv",
+            "args": [
+                "--directory",
+                "../mcp_servers_py/weather",
+                "run",
+                "weather.py"
+            ]
+        },
         "research": {
             "command": "python",
             "args": [
                 "research_server.py"
             ]
         },
-        
         "fetch": {
             "command": "uvx",
             "args": [
