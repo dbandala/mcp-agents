@@ -1,0 +1,14 @@
++-----------------------+
+|   Claude Desktop      |
+|  (MCP Integration)    |
++----------+------------+
+           |
+           v
++-----------------------+
+|    blender_expert     | <--- Main interface for queries, commands, and responses
++----------+------------+
+           |
+  +--------+--------+--------+--------+--------+
+  |        |        |        |        |        |
+  v        v        v        v        v        v
+[Parser] [Knowledge Base] [Transformer] [Advisor] [Codegen] [TutorialBot]
