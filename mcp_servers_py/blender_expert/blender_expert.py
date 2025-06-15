@@ -10,7 +10,8 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from openai import OpenAI
 
-from parser import parse_command
+from tools.parser import parse_command
+from tools.knowledge_base import query_vector_db_codebase, query_vector_db_manual
 
 # Load environment variables from .env file
 load_dotenv()
@@ -22,6 +23,78 @@ mcp = FastMCP("blender_expert")
 llm_client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
 )
+
+
+# tool for retrieving Blender code base information
+@mcp.tool(
+    name="get_blender_codebase",
+    description="Retrieves information about Blender's code base. This tool can be used to understand how Blender works under the hood.",
+    annotations=ToolAnnotations(parameters={ # type: ignore
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The query to search in the Blender code base."
+            }
+        },
+        "required": ["query"],
+        "additionalProperties": False
+    }))
+def get_blender_codebase(query: str) -> str:
+    """
+    Retrieves information about Blender's code base, including commands and their descriptions.
+    This tool can be used to understand how Blender commands work and how to use them effectively.
+    Args:
+        query: The query to search in the Blender code base.
+    Returns:
+        A string containing relevant information from the Blender code base.
+    """
+    # Validate the input query
+    if not query:
+        raise ValueError("The query cannot be empty.")
+    
+    # For simplicity, we return a static list of Blender commands and descriptions
+    # In a real application, this would query a database or knowledge base
+    codebase = query_vector_db_codebase(query)
+    if not codebase:
+        return "No relevant information found in the Blender code base for the given query."
+    
+    return codebase
+
+# tool for retrieving Blender manual information
+@mcp.tool(
+    name="get_blender_manual",
+    description="Retrieves information about Blender Python API documentation, including commands, their descriptions and how to use them. This tool provides reference to the Python API and explains how Blender commands work in order to use them effectively.",
+    annotations=ToolAnnotations(parameters={ # type: ignore
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The query to search in the Blender Python API documentation."
+            }
+        },
+        "required": ["query"],
+        "additionalProperties": False
+    }))
+def get_blender_manual(query: str) -> str:
+    """
+    Retrieves information about Blender Python API documentation, including commands, their descriptions and how to use them.
+    Args:
+        query: The query to search in the Blender Python API documentation.
+    Returns:
+        A string containing relevant information from the Blender manual.
+    """
+    # Validate the input query
+    if not query:
+        raise ValueError("The query cannot be empty.")
+    
+    # query the vector database for Blender manual information
+    api_reference = query_vector_db_manual(query)
+    if not api_reference:
+        return "No relevant information found in the Blender Python API documentation for the given query."
+    
+    return api_reference
+    
 
 
 @mcp.tool(
@@ -159,72 +232,4 @@ def parse_command(operation_text: str) -> dict:
     
     # Return the parsed command
     return parsed_command
-
-
-
-
-@mcp.tool(
-    name="get_knowledge_base",
-    description="Retrieves detailed information about Blender commands, objects, and concepts.",
-    annotations=ToolAnnotations(parameters={ # type: ignore
-        "type": "object",
-        "properties": {
-            "query": {
-                "type": "string",
-                "description": "The query to search in the knowledge base."
-            }
-        },
-        "required": ["query"],
-        "additionalProperties": False
-    }))
-def get_knowledge_base(query: str) -> List[str]:
-    """
-    Retrieves detailed information about Blender commands, objects, and concepts.
-    This function searches a knowledge base for relevant information based on the provided query.
-    It fetches information that can help users understand how to use Blender effectively.
-    It searches into a vector database or knowledge base for relevant information based on the provided query.
-    Args:
-        query: The query to search in the knowledge base.
-    Returns:
-        A list of relevant information from the knowledge base.
-    """
-    # Validate the input query
-    if not query:
-        raise ValueError("The query cannot be empty.")
-    
-    # For simplicity, we return a static list of Blender commands and descriptions
-    # In a real application, this would query a database or knowledge base
-    knowledge_base = [
-        "Blender is a powerful open-source 3D creation suite.",
-        "You can create 3D models, animations, and renderings using Blender.",
-        "Blender supports Python scripting for automation and custom tools.",
-        "Common operations include adding objects, modifying meshes, and rendering scenes."
-    ]
-    
-    return [info for info in knowledge_base if query.lower() in info.lower()]
-
-
-
-@mcp.tool(
-    name="get_blender_commands",
-    description="Get a list of Blender commands and their descriptions.",
-    annotations=ToolAnnotations(parameters={ # type: ignore
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": False
-    }))
-def get_blender_commands() -> List[str]:
-    """Get a list of Blender commands and their descriptions."""
-    commands = [
-        "bpy.ops.object.select_all(action='SELECT') - Select all objects in the scene.",
-        "bpy.ops.object.delete() - Delete selected objects.",
-        "bpy.ops.object.mode_set(mode='EDIT') - Switch to Edit Mode for the active object.",
-        "bpy.ops.object.mode_set(mode='OBJECT') - Switch back to Object Mode.",
-        "bpy.ops.mesh.primitive_cube_add() - Add a new cube to the scene.",
-        "bpy.ops.mesh.primitive_uv_sphere_add() - Add a new UV sphere to the scene.",
-        "bpy.ops.render.render() - Render the current scene.",
-        "bpy.data.objects['Cube'].location.x += 1.0 - Move the Cube object along the X axis."
-    ]
-    return commands
 
