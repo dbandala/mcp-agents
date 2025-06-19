@@ -91,13 +91,15 @@ def create_vector_db_manual() -> Chroma:
     )
 
     # read pdf file
-    pdf_path = "blender_python_reference_2_61_0.pdf"
+    pdf_path = "scripts/blender_python_reference_2_61_0.pdf"
     loader = PyPDFLoader(pdf_path)
     document = loader.load()
 
     # Split the document into smaller chunks for better processing
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=2048, chunk_overlap=400)
     docs = text_splitter.split_documents(document)
+
+    print("*** split docs: ", len(docs))
 
     # Add documents to the vector store in batches
     batch_size = 128
@@ -120,23 +122,33 @@ def query_vector_store(vector_store_path: str, query: str, top_k: int = 5) -> Li
         List[Dict]: A list of dictionaries containing the document content and metadata.
     """
     vector_store = Chroma(
+        collection_name="blender_manual",  # or "blender_codebase" based on your use case
         embedding_function=embeddings,
         persist_directory=vector_store_path,
     )
+
+    if not vector_store:
+        raise ValueError(f"Vector store at {vector_store_path} not found or is empty.")
+    
+    print(vector_store._collection_name)
     results = vector_store.similarity_search(query, k=top_k)
     return [{"content": doc.page_content, "metadata": doc.metadata} for doc in results]
 
 # Example usage
 if __name__ == "__main__":
     # Create the vector database for the Blender codebase
-    vector_store = create_vector_db_codebase()
+    #vector_store = create_vector_db_codebase()
 
     # Create the vector database for the Blender manual
-    #vector_store_manual = create_vector_db_manual()
+    # vector_store_manual = create_vector_db_manual()
 
 
-    query = "mesh"
+    query = "python"
     results = query_vector_store("vector_db/blender_manual", query)
+
+    print(f"Query: {query}\n")
+    print(f"Number of results found: {len(results)}\n")
+
     for result in results:
         print(f"Content: {result['content'][:400]}...")  # Print first 200 characters
         print(f"Metadata: {result['metadata']}\n\n")

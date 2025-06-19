@@ -12,23 +12,19 @@ from openai import OpenAI
 
 from tools.parser import parse_command
 from tools.knowledge_base import query_vector_db_codebase, query_vector_db_manual
+from tools.web_resources import scrape_static_page
 
 # Load environment variables from .env file
 load_dotenv()
 
 # initialize FastMCP server
-mcp = FastMCP("blender_expert")
-
-# llm client
-llm_client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-)
+mcp = FastMCP("blender-expert")
 
 
 # tool for retrieving Blender code base information
 @mcp.tool(
     name="get_blender_codebase",
-    description="Retrieves information about Blender's code base. This tool can be used to understand how Blender works under the hood.",
+    description="Retrieves information about Blender's main code base, written in C++. This tool can be used to understand how Blender works under the hood.",
     annotations=ToolAnnotations(parameters={ # type: ignore
         "type": "object",
         "properties": {
@@ -42,8 +38,7 @@ llm_client = OpenAI(
     }))
 def get_blender_codebase(query: str) -> str:
     """
-    Retrieves information about Blender's code base, including commands and their descriptions.
-    This tool can be used to understand how Blender commands work and how to use them effectively.
+    Retrieves information about Blender's code base.
     Args:
         query: The query to search in the Blender code base.
     Returns:
@@ -63,8 +58,8 @@ def get_blender_codebase(query: str) -> str:
 
 # tool for retrieving Blender manual information
 @mcp.tool(
-    name="get_blender_manual",
-    description="Retrieves information about Blender Python API documentation, including commands, their descriptions and how to use them. This tool provides reference to the Python API and explains how Blender commands work in order to use them effectively.",
+    name="get_blender_api_reference",
+    description="Retrieves information about Blender Python API documentation, including commands, their descriptions and how to use them effectively.",
     annotations=ToolAnnotations(parameters={ # type: ignore
         "type": "object",
         "properties": {
@@ -76,7 +71,7 @@ def get_blender_codebase(query: str) -> str:
         "required": ["query"],
         "additionalProperties": False
     }))
-def get_blender_manual(query: str) -> str:
+def get_blender_api_reference(query: str) -> str:
     """
     Retrieves information about Blender Python API documentation, including commands, their descriptions and how to use them.
     Args:
@@ -94,142 +89,50 @@ def get_blender_manual(query: str) -> str:
         return "No relevant information found in the Blender Python API documentation for the given query."
     
     return api_reference
-    
 
 
-@mcp.tool(
-    name="parse_command",
-    description="Parse a Blender command and extract its components.",
-    annotations=ToolAnnotations(parameters={ # type: ignore
-        "type": "object",
-        "properties": {
-            "command": {
-                "type": "string",
-                "description": "The Blender command to parse."
-            }
-        },
-        "required": ["command"],
-        "additionalProperties": False
-    }))
-def parse_command(operation_text: str) -> dict:
+
+# resource for getting an overview of the Blender Python API
+@mcp.resource(
+    uri="web:://python_api/overview",
+    name="get_python_api_overview",
+    description="Retrieves an overview of the Blender Python API, including its structure and key components.",
+    mime_type="application/text"
+)
+def get_python_api_overview() -> str:
     """
-        Converts natural language input into actionable intents and parameters.
-        Parse a Blender command and extract its components.
-        Args:
-            operation_text: The Blender command to parse.
-        The command should be a string that describes an operation in Blender, such as moving an object, scaling, or rotating it.
-        The command should be in a natural language format, such as "move the cube 2 units on the x-axis" or "rotate the sphere 90 degrees around the y-axis".
-        Returns:
-            A dictionary containing the action, target, value, and axis extracted from the command.
+    Retrieves an overview of the Blender Python API, including its structure and key components.
+    Returns:
+        A string containing the overview of the Blender Python API.
     """
-    # Validate the input command
-    if not operation_text:
-        raise ValueError("The command cannot be empty.")
-    
-
-
-
-    json_example = """
-        {
-            "name": "Extrude Faces",
-            "identifier": "mesh.extrude_region_move",
-            "mode": "EDIT_MESH",
-            "keybinding": "E",
-            "description": "Duplicates selected faces (and edges) and moves them along normals or specified axis, creating new geometry connected to original mesh.",
-            "input": {
-                "interactive": true,
-                "numeric_value": true,
-                "axis_lock": ["X", "Y", "Z"],
-                "proportional_editing": { "supported": true }
-            },
-            "options": {
-                "use_normal_flip": { "type": "boolean", "default": false },
-                "use_dissolve_ortho_edges": { "type": "boolean", "default": false },
-                "mirror": { "type": "boolean", "default": false }
-            },
-            "behavior": {
-                "default_direction": "average face normal",
-                "axis_constraint": "locked to single axis when specified",
-                "geometry_connection": "new faces connect border loop to original",
-                "inner_region_behaviour": "moved with extrusion, not separated"
-            },
-            "python_api": {
-                "operator_call": "bpy.ops.mesh.extrude_region_move",
-                "example": "bpy.ops.mesh.extrude_region_move(TRANSFORM_OT_translate={\"value\": (0,0,1)})",
-                "bmesh_ops": [
-                {
-                    "function": "bmesh.ops.extrude_face_region",
-                    "args": ["bm", "geom=selected_faces"]
-                },
-                {
-                    "function": "bmesh.ops.translate",
-                    "args": ["bm", "verts=extruded_verts", "vec=(x,y,z)"]
-                }
-                ]
-            },
-            "data_flow": {
-                "input_selection": ["BMFace", "BMEdge"],
-                "extrude_output": {
-                "new_geometry": ["BMVert", "BMEdge", "BMFace"],
-                "returned_in": "output['geom']"
-                },
-                "post_translate": "apply to vertices only"
-            },
-            "advanced_modes": [
-                {
-                "mode": "extrude individual faces",
-                "identifier": "mesh.extrude_faces_move",
-                "behavior": "extrudes each face along its own normal",
-                "python_flag": "MESH_OT_extrude_faces_indiv"
-                },
-                {
-                "mode": "extrude faces along normals",
-                "identifier": "mesh.extrude_region_shrink_fatten",
-                "behavior": "locks movement along local normals",
-                "option": "OFFSET_EVEN"
-                }
-            ],
-            "use_cases": [
-                "box modeling (e.g. walls, limbs)",
-                "branching geometry from base mesh",
-                "creating architectural details"
-            ],
-            "references": {
-                "manual": "Extends faces along normals with optional dissolve & normal flipping" ,
-                "api": "bmesh.ops.extrude_face_region + translate",
-                "documentation": [
-                "Extrude Faces — Blender Manual" ,
-                "bmesh.ops documentation"
-                ]
-            }
-        }
-    """
-    
-    # parse command using openai llm client and return a json object with the parsed components
-    response = llm_client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a Blender expert."},
-            {"role": "user", "content": f"""Parse this command: {operation_text} into a JSON schema representing the blender command. Return only the JSON object without any additional text."""},
-            {"role": "user", "content": f"Here is an example of a JSON schema for a Blender command: {json_example}"}
-        ],
-        max_tokens=1024,
-        temperature=0.0
-    )
-    # Extract the response text
-    response_text = response.choices[0].message.content
-
-    # Parse the response text as JSON
+    # Scrape the static page for the Blender Python API overview
+    url = "https://docs.blender.org/api/current/info_overview.html"
+    selector = "body"
     try:
-        parsed_command = json.loads(response_text or "{}")
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Failed to parse the command: {e}")
-    # Validate the parsed command structure
-    # required_keys = ["action", "target"]
-    # for key in required_keys:
-    #     if key not in parsed_command:
-    #         raise ValueError(f"Missing required key: {key} in the parsed command.")
+        overview = scrape_static_page(url, selector)
+        return "\n".join(overview)
+    except Exception as e:
+        return f"Error retrieving Blender Python API overview: {str(e)}"
     
-    # Return the parsed command
-    return parsed_command
 
+# resource for getting an API reference usage page content
+@mcp.resource(
+    uri="web:://python_api/reference_usage",
+    name="get_api_reference_usage",
+    description="Retrieves the content of the Blender Python API reference usage page.",
+    mime_type="application/text"
+)
+def get_api_reference_usage() -> str:
+    """
+    Retrieves the content of the Blender Python API reference usage page.
+    Returns:
+        A string containing the content of the Blender Python API reference usage page.
+    """
+    # Scrape the static
+    url = "https://docs.blender.org/api/current/info_api_reference.html"
+    selector = "body"
+    try:
+        usage_content = scrape_static_page(url, selector)
+        return "\n".join(usage_content)
+    except Exception as e:
+        return f"Error retrieving Blender Python API reference usage content: {str(e)}"
