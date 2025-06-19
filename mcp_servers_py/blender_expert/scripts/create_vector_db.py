@@ -109,6 +109,57 @@ def create_vector_db_manual() -> Chroma:
 
     return vector_store
 
+
+
+def create_vector_db_tutorials() -> Chroma:
+    """
+    Loads documents from the specified directory, splits them, and creates a Chroma vector store.
+    Returns:
+        Chroma: The created Chroma vector store.
+    """
+    vector_store = Chroma(
+        collection_name="blender_scripting_examples",
+        embedding_function=embeddings,
+        persist_directory="vector_db/blender_scripting_examples",
+    )
+
+    file_extensions = [".cpp", ".cxx", ".cc", ".C", ".c++", ".h", ".hpp", ".py"]
+
+    for dir in ["/Users/bandala/Documents/bandala/code/blender-scripting/scripts", "/Users/bandala/Documents/bandala/code/blender_plus_python"]:
+        for ext in file_extensions:
+            print(f"Processing files with extension: {ext}")
+            # Load documents from the specified directory with the given file extension
+            loader = DirectoryLoader(
+                path=dir,
+                glob="**/*" + ext,
+                loader_cls=TextLoader,
+                recursive=True,
+            )
+
+            raw_docs = loader.load()
+            print("*** raw docs: ", len(raw_docs))
+
+            splitter = RecursiveCharacterTextSplitter(chunk_size=2048, chunk_overlap=200, length_function=len)
+            docs = splitter.split_documents(raw_docs)
+
+            print("*** split docs: ", len(docs))
+
+            # Update metadata for each doc
+            for doc in docs:
+                doc.metadata = {
+                    "file_name": os.path.basename(doc.metadata.get("source", "")),
+                }
+
+            # Add documents to the vector store in batches
+            batch_size = 128
+            for i in range(0, len(docs), batch_size):
+                batch = docs[i:i + batch_size]
+                vector_store.add_documents(batch)
+
+    return vector_store
+
+
+
 # query data
 def query_vector_store(vector_store_path: str, query: str, top_k: int = 5) -> List[Dict]:
     """
@@ -142,9 +193,12 @@ if __name__ == "__main__":
     # Create the vector database for the Blender manual
     # vector_store_manual = create_vector_db_manual()
 
+    # Create the vector database for Blender scripting examples
+    vector_store_tutorials = create_vector_db_tutorials()
 
-    query = "python"
-    results = query_vector_store("vector_db/blender_manual", query)
+
+    query = "sphere mesh example script"
+    results = query_vector_store("vector_db/blender_scripting_examples", query)
 
     print(f"Query: {query}\n")
     print(f"Number of results found: {len(results)}\n")

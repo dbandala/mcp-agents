@@ -63,6 +63,22 @@ def query_vector_db_manual(query: str) -> str:
 
 
 
+def query_vector_db_examples(query: str) -> str:
+    """
+    Queries the vector database for Blender manual and returns the results.
+    Returns:
+        str: The results of the query.
+    """
+    vector_store = Chroma(
+        collection_name="blender_scripting_examples",
+        embedding_function=embeddings,
+        persist_directory="vector_db/blender_scripting_examples",
+    )
+    results = vector_store.similarity_search(query, k=5)
+    return "\n".join([doc.page_content for doc in results])
+
+
+
 def fetch_online_documentation(query: str) -> str:
     """
     Fetches online documentation for Blender based on the query.

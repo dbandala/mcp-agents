@@ -11,7 +11,7 @@ from mcp.types import ToolAnnotations
 from openai import OpenAI
 
 from tools.parser import parse_command
-from tools.knowledge_base import query_vector_db_codebase, query_vector_db_manual
+from tools.knowledge_base import query_vector_db_codebase, query_vector_db_manual, query_vector_db_examples
 from tools.web_resources import scrape_static_page
 
 # Load environment variables from .env file
@@ -90,6 +90,41 @@ def get_blender_api_reference(query: str) -> str:
     
     return api_reference
 
+
+
+# tool for retrieving Blender example scripts
+@mcp.tool(
+    name="get_blender_example_scripts",
+    description="Retrieves example scripts for Blender Python API usage, including code snippets and explanations.",
+    annotations=ToolAnnotations(parameters={  # type: ignore
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The query to search for relevant Blender example scripts."
+            }
+        },
+        "required": ["query"],
+        "additionalProperties": False
+    }))
+def get_blender_example_scripts(query: str) -> str:
+    """
+    Retrieves example scripts for Blender Python API usage.
+    Args:
+        query: The query to search for relevant Blender example scripts.
+    Returns:
+        A string containing relevant example scripts and explanations.
+    """
+    if not query:
+        raise ValueError("The query cannot be empty.")
+
+    # For demonstration, reuse the manual vector DB for example scripts
+    # In a real application, this would query a dedicated example scripts database
+    examples = query_vector_db_examples(query + " example script")
+    if not examples:
+        return "No relevant Blender example scripts found for the given query."
+
+    return examples
 
 
 # resource for getting an overview of the Blender Python API
