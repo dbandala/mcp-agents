@@ -4,7 +4,7 @@ from typing import List, Dict
 from dotenv import load_dotenv
 
 from langchain_openai import OpenAIEmbeddings
-from langchain_chroma import Chroma
+from langchain_community.vectorstores.faiss import FAISS
 from pydantic import SecretStr
 
 
@@ -30,17 +30,22 @@ embeddings = OpenAIEmbeddings(
     api_key=SecretStr(openai_api_key),
 )
 
-def create_vector_db_codebase() -> Chroma:
+def create_vector_db_codebase() -> FAISS:
     """
-    Loads documents from the specified directory, splits them, and creates a Chroma vector store.
+    Loads documents from the specified directory, splits them, and creates a FAISS vector store.
     Returns:
-        Chroma: The created Chroma vector store.
+        FAISS: The created FAISS vector store.
     """
-    vector_store = Chroma(
-        collection_name="blender_codebase",
-        embedding_function=embeddings,
-        persist_directory="vector_db/blender_codebase",
+    # Create an empty FAISS index which will be populated with documents
+    vector_store = FAISS.from_texts(
+        texts=["Initialization document"],
+        embedding=embeddings,
     )
+    
+    # Set up a directory to save the FAISS index
+    faiss_store_path = "vector_db/blender_codebase"
+    # Create directory if it doesn't exist
+    os.makedirs(faiss_store_path, exist_ok=True)
 
     file_extensions = [".cpp", ".cxx", ".cc", ".C", ".c++", ".h", ".hpp", ".py"]
 
@@ -72,23 +77,32 @@ def create_vector_db_codebase() -> Chroma:
         batch_size = 128
         for i in range(0, len(docs), batch_size):
             batch = docs[i:i + batch_size]
-            vector_store.add_documents(batch)
-
+            # With FAISS, we need to create a new index and merge it with existing one
+            new_index = FAISS.from_documents(batch, embeddings)
+            vector_store.merge_from(new_index)
+    
+    # Save the FAISS index to disk
+    vector_store.save_local("vector_db/blender_codebase")
     return vector_store
 
 
 # create the vector database from a blender manual pdf
-def create_vector_db_manual() -> Chroma:
+def create_vector_db_manual() -> FAISS:
     """
-    Loads documents from the Blender manual PDF, splits them, and creates a Chroma vector store.
+    Loads documents from the Blender manual PDF, splits them, and creates a FAISS vector store.
     Returns:
-        Chroma: The created Chroma vector store.
+        FAISS: The created FAISS vector store.
     """
-    vector_store = Chroma(
-        collection_name="blender_manual",
-        embedding_function=embeddings,
-        persist_directory="vector_db/blender_manual",
+    # Create an empty FAISS index which will be populated with documents
+    vector_store = FAISS.from_texts(
+        texts=["Initialization document"],
+        embedding=embeddings,
     )
+    
+    # Set up a directory to save the FAISS index
+    faiss_store_path = "vector_db/blender_manual"
+    # Create directory if it doesn't exist
+    os.makedirs(faiss_store_path, exist_ok=True)
 
     # read pdf file
     pdf_path = "scripts/blender_python_reference_2_61_0.pdf"
@@ -105,23 +119,32 @@ def create_vector_db_manual() -> Chroma:
     batch_size = 128
     for i in range(0, len(docs), batch_size):
         batch = docs[i:i + batch_size]
-        vector_store.add_documents(batch)
+        # With FAISS, we need to create a new index and merge it with existing one
+        new_index = FAISS.from_documents(batch, embeddings)
+        vector_store.merge_from(new_index)
 
+    # Save the FAISS index to disk
+    vector_store.save_local("vector_db/blender_manual")
     return vector_store
 
 
 
-def create_vector_db_tutorials() -> Chroma:
+def create_vector_db_tutorials() -> FAISS:
     """
-    Loads documents from the specified directory, splits them, and creates a Chroma vector store.
+    Loads documents from the specified directory, splits them, and creates a FAISS vector store.
     Returns:
-        Chroma: The created Chroma vector store.
+        FAISS: The created FAISS vector store.
     """
-    vector_store = Chroma(
-        collection_name="blender_scripting_examples",
-        embedding_function=embeddings,
-        persist_directory="vector_db/blender_scripting_examples",
+    # Create an empty FAISS index which will be populated with documents
+    vector_store = FAISS.from_texts(
+        texts=["Initialization document"],
+        embedding=embeddings,
     )
+    
+    # Set up a directory to save the FAISS index
+    faiss_store_path = "vector_db/blender_scripting_examples"
+    # Create directory if it doesn't exist
+    os.makedirs(faiss_store_path, exist_ok=True)
 
     file_extensions = [".cpp", ".cxx", ".cc", ".C", ".c++", ".h", ".hpp", ".py"]
 
@@ -154,8 +177,12 @@ def create_vector_db_tutorials() -> Chroma:
             batch_size = 128
             for i in range(0, len(docs), batch_size):
                 batch = docs[i:i + batch_size]
-                vector_store.add_documents(batch)
+                # With FAISS, we need to create a new index and merge it with existing one
+                new_index = FAISS.from_documents(batch, embeddings)
+                vector_store.merge_from(new_index)
 
+    # Save the FAISS index to disk
+    vector_store.save_local("vector_db/blender_scripting_examples")
     return vector_store
 
 
@@ -172,16 +199,19 @@ def query_vector_store(vector_store_path: str, query: str, top_k: int = 5) -> Li
     Returns:
         List[Dict]: A list of dictionaries containing the document content and metadata.
     """
-    vector_store = Chroma(
-        collection_name="blender_manual",  # or "blender_codebase" based on your use case
-        embedding_function=embeddings,
-        persist_directory=vector_store_path,
-    )
+    # Load the FAISS index from disk
+    try:
+        vector_store = FAISS.load_local(
+            vector_store_path,
+            embeddings,
+            allow_dangerous_deserialization=True,  # Set to True for loading existing vector store
+        )
+    except Exception as e:
+        raise ValueError(f"Error loading vector store at {vector_store_path}: {str(e)}")
 
     if not vector_store:
         raise ValueError(f"Vector store at {vector_store_path} not found or is empty.")
     
-    print(vector_store._collection_name)
     results = vector_store.similarity_search(query, k=top_k)
     return [{"content": doc.page_content, "metadata": doc.metadata} for doc in results]
 
@@ -196,9 +226,15 @@ if __name__ == "__main__":
     # Create the vector database for Blender scripting examples
     vector_store_tutorials = create_vector_db_tutorials()
 
+    db = [
+        "vector_db/blender_codebase",
+        "vector_db/blender_manual",
+        "vector_db/blender_scripting_examples"
+    ]
+
 
     query = "sphere mesh example script"
-    results = query_vector_store("vector_db/blender_scripting_examples", query)
+    results = query_vector_store(db[2], query)
 
     print(f"Query: {query}\n")
     print(f"Number of results found: {len(results)}\n")

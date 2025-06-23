@@ -1,20 +1,10 @@
 ## Script for generating a vector database for Blender commands
 import os
-from typing import List, Dict
 from dotenv import load_dotenv
 
 from langchain_openai import OpenAIEmbeddings
-from langchain_chroma import Chroma
+from langchain_community.vectorstores.faiss import FAISS
 from pydantic import SecretStr
-
-
-from langchain_core.documents import Document
-from langchain_community.document_loaders import DirectoryLoader
-from langchain_community.document_loaders import TextLoader
-from langchain_text_splitters import CharacterTextSplitter
-
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters.character import RecursiveCharacterTextSplitter
 
 
 # Load environment variables from .env file
@@ -36,12 +26,12 @@ def query_vector_db_codebase(query: str) -> str:
     Returns:
         str: The results of the query.
     """
-    vector_store = Chroma(
-        collection_name="blender_codebase",
-        embedding_function=embeddings,
-        persist_directory="vector_db/blender_codebase",
+    vector_store = FAISS.load_local(
+        folder_path="vector_db/blender_codebase",
+        embeddings=embeddings,
+        allow_dangerous_deserialization=True
     )
-    results = vector_store.similarity_search(query, k=5)
+    results = vector_store.similarity_search(query, k=4)
     return "\n".join([doc.page_content for doc in results])
 
 
@@ -53,28 +43,28 @@ def query_vector_db_manual(query: str) -> str:
     Returns:
         str: The results of the query.
     """
-    vector_store = Chroma(
-        collection_name="blender_manual",
-        embedding_function=embeddings,
-        persist_directory="vector_db/blender_manual",
+    vector_store = FAISS.load_local(
+        folder_path="vector_db/blender_manual",
+        embeddings=embeddings,
+        allow_dangerous_deserialization=True
     )
-    results = vector_store.similarity_search(query, k=5)
+    results = vector_store.similarity_search(query, k=4)
     return "\n".join([doc.page_content for doc in results])
 
 
 
 def query_vector_db_examples(query: str) -> str:
     """
-    Queries the vector database for Blender manual and returns the results.
+    Queries the vector database for Blender scripting examples and returns the results.
     Returns:
         str: The results of the query.
     """
-    vector_store = Chroma(
-        collection_name="blender_scripting_examples",
-        embedding_function=embeddings,
-        persist_directory="vector_db/blender_scripting_examples",
+    vector_store = FAISS.load_local(
+        folder_path="vector_db/blender_scripting_examples",
+        embeddings=embeddings,
+        allow_dangerous_deserialization=True
     )
-    results = vector_store.similarity_search(query, k=5)
+    results = vector_store.similarity_search(query, k=4)
     return "\n".join([doc.page_content for doc in results])
 
 
