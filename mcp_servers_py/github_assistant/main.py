@@ -11,6 +11,8 @@ from mcp.types import ToolAnnotations
 
 import subprocess 
 
+from core_functions.git_operations import file_changes
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -67,42 +69,6 @@ async def analyze_file_changes(base_dir,  base_branch: str = "main", include_dif
     if not base_branch:
         raise ValueError("The base branch cannot be empty.")
     
-    try:
-        # Get the diff
-        result = subprocess.run(
-            ["git", "diff", f"{base_branch}...HEAD", "--", base_dir],
-            cwd=base_dir,
-            capture_output=True, 
-            text=True
-        )
-
-        print(f"Running git diff in {base_dir} against {base_branch}...HEAD")
-        print(f"Command output: {result.stdout}")
-        
-        diff_output = result.stdout
-        diff_lines = diff_output.split('\n')
-        
-        # Smart truncation if needed
-        if len(diff_lines) > max_diff_lines:
-            truncated_diff = '\n'.join(diff_lines[:max_diff_lines])
-            truncated_diff += f"\n\n... Output truncated. Showing {max_diff_lines} of {len(diff_lines)} lines ..."
-            diff_output = truncated_diff
-        
-        # Get summary statistics
-        stats_result = subprocess.run(
-            ["git", "diff", "--stat", f"{base_branch}...HEAD"],
-            capture_output=True,
-            text=True
-        )
-        
-        return json.dumps({
-            "stats": stats_result.stdout,
-            "total_lines": len(diff_lines),
-            "diff": diff_output if include_diff else "Use include_diff=true to see diff",
-            "files_changed": len(diff_lines) if include_diff else "Use include_diff=true to see files changed"
-        })
-        
-    except Exception as e:
-        return json.dumps({"error": str(e)})
+    return file_changes(base_dir, base_branch, include_diff, max_diff_lines)
 
 
